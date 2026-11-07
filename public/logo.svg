@@ -1,0 +1,56 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" fill="none">
+  <defs>
+    <!-- Background Glow Gradient -->
+    <radialGradient id="logoGlow" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#00e599" stop-opacity="0.35" />
+      <stop offset="100%" stop-color="#00e599" stop-opacity="0" />
+    </radialGradient>
+    
+    <!-- Shield Metallic Gradient -->
+    <linearGradient id="shieldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#1e2638" />
+      <stop offset="50%" stop-color="#0f1420" />
+      <stop offset="100%" stop-color="#090d15" />
+    </linearGradient>
+
+    <!-- Emerald Volt Neon Gradient -->
+    <linearGradient id="voltGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#00ffaa" />
+      <stop offset="100%" stop-color="#00b377" />
+    </linearGradient>
+
+    <!-- Cyan Accent Gradient -->
+    <linearGradient id="cyanGrad" x1="0%" y1="100%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#00e5ff" />
+      <stop offset="100%" stop-color="#0088ff" />
+    </linearGradient>
+  </defs>
+
+  <!-- Ambient Glow -->
+  <circle cx="50" cy="50" r="46" fill="url(#logoGlow)" />
+
+  <!-- Outer Cyber Hex Shield -->
+  <polygon points="50,6 88,25 88,68 50,94 12,68 12,25" fill="url(#shieldGrad)" stroke="#2a354d" stroke-width="2.5" />
+  
+  <!-- Outer Neon Edge Trim -->
+  <polygon points="50,11 83,27 83,65 50,88 17,65 17,27" fill="none" stroke="url(#voltGrad)" stroke-width="1.5" stroke-dasharray="24 6" opacity="0.8" />
+
+  <!-- Tactical Reticle Cross Wings -->
+  <!-- Top Marker -->
+  <path d="M50,15 L50,28" stroke="url(#voltGrad)" stroke-width="3" stroke-linecap="round" />
+  <!-- Bottom Marker -->
+  <path d="M50,72 L50,85" stroke="url(#voltGrad)" stroke-width="3" stroke-linecap="round" />
+  <!-- Left Marker -->
+  <path d="M22,50 L35,50" stroke="url(#voltGrad)" stroke-width="3" stroke-linecap="round" />
+  <!-- Right Marker -->
+  <path d="M65,50 L78,50" stroke="url(#voltGrad)" stroke-width="3" stroke-linecap="round" />
+
+  <!-- Inner Precision Aim Diamond -->
+  <polygon points="50,33 67,50 50,67 33,50" fill="#0f1420" stroke="url(#cyanGrad)" stroke-width="2" />
+
+  <!-- Central Target Ring -->
+  <circle cx="50" cy="50" r="8" fill="none" stroke="url(#voltGrad)" stroke-width="2" />
+  
+  <!-- Bullseye Center Core -->
+  <circle cx="50" cy="50" r="3.5" fill="#00ffaa" />
+</svg>
