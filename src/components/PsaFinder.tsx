@@ -314,25 +314,14 @@ export const PsaFinder: React.FC<Props> = ({
               </div>
             </div>
 
-            {/* Quick Difficulty Pills & ADS Zoom Button */}
+            {/* Locked Difficulty Badge & ADS Zoom Button */}
             <div className="flex flex-wrap items-center gap-2">
-              <div className="flex items-center gap-1 bg-[#131722] p-1 rounded-xl steam-border text-xs">
-                <span className="text-slate-400 text-xs px-2 font-medium">Độ khó:</span>
-                {(['easy', 'medium', 'hard', 'pro'] as DrillDifficulty[]).map((d) => (
-                  <button
-                    key={d}
-                    type="button"
-                    onClick={() => setDifficulty(d)}
-                    className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                      difficulty === d
-                        ? 'bg-volt-500 text-black shadow-volt-glow font-extrabold'
-                        : 'text-slate-400 hover:text-white'
-                    }`}
-                    title={DIFFICULTY_CONFIGS[d].description}
-                  >
-                    {DIFFICULTY_CONFIGS[d].name}
-                  </button>
-                ))}
+              <div className="flex items-center gap-2 bg-[#131722] px-3 py-1.5 rounded-xl steam-border text-xs">
+                <span className="text-slate-400 font-medium">Độ khó mục tiêu:</span>
+                <span className="px-2 py-0.5 rounded bg-volt-500/20 text-volt-400 font-mono font-extrabold text-[11px] uppercase border border-volt-500/30">
+                  {DIFFICULTY_CONFIGS[difficulty].name} (r={DIFFICULTY_CONFIGS[difficulty].targetRadius}m)
+                </span>
+                <span className="text-slate-500 text-[11px] hidden sm:inline">• Cố định cho 5 vòng</span>
               </div>
 
               <button

@@ -681,7 +681,19 @@ export const FpsRange3D: React.FC<Props> = ({
             spawnFlickTarget();
           }
         } else {
-          metricsRef.current.undershoots += 0.5;
+          // Precise 3D vector-based overshoot vs undershoot evaluation
+          const localTarget = targetMeshRef.current.position.clone().applyMatrix4(cameraRef.current.matrixWorldInverse);
+          const lastDirX = metricsRef.current.lastMouseDirX;
+
+          // If moving right (lastDirX > 0) and target is to the left in camera space, player flicked past the target
+          // If moving left (lastDirX < 0) and target is to the right in camera space, player flicked past the target
+          if (lastDirX > 0 && localTarget.x < 0) {
+            metricsRef.current.overshoots += 1;
+          } else if (lastDirX < 0 && localTarget.x > 0) {
+            metricsRef.current.overshoots += 1;
+          } else {
+            metricsRef.current.undershoots += 1;
+          }
         }
 
         const hits = metricsRef.current.hits;
@@ -722,14 +734,17 @@ export const FpsRange3D: React.FC<Props> = ({
         const target = targetMeshRef.current;
 
         if (mode === 'tracking') {
-          target.position.x += targetVelocityRef.current.x * dt;
-          target.position.y = 1.7 + Math.sin(now * 0.0022) * 0.9;
-          target.position.z = -8.5 + Math.cos(now * 0.0016) * 1.5;
+          const speedMult = DIFFICULTY_CONFIGS[difficulty]?.speedMultiplier || 1.0;
+          const currentSpeed = 3.2 * speedMult;
+          const dir = Math.sign(targetVelocityRef.current.x) || 1;
+          target.position.x += dir * currentSpeed * dt;
+          target.position.y = 1.7 + Math.sin(now * 0.0022 * speedMult) * 0.9;
+          target.position.z = -8.5 + Math.cos(now * 0.0016 * speedMult) * 1.5;
 
           if (target.position.x > 5.5) {
-            targetVelocityRef.current.x = -Math.abs(targetVelocityRef.current.x);
+            targetVelocityRef.current.x = -1;
           } else if (target.position.x < -5.5) {
-            targetVelocityRef.current.x = Math.abs(targetVelocityRef.current.x);
+            targetVelocityRef.current.x = 1;
           }
 
           if (isLocked && cameraRef.current) {
