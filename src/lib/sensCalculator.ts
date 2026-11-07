@@ -106,6 +106,19 @@ export const GAME_CONFIGS: Record<SupportedGame, GameConfig> = {
       { name: 'Mongraal', team: 'Pro', dpi: 800, sens: 8.8, edpi: 7040 },
       { name: 'Bugha', team: 'Dignitas', dpi: 800, sens: 7.2, edpi: 5760 }
     ]
+  },
+  deltaforce: {
+    id: 'deltaforce',
+    name: 'Delta Force',
+    yaw: 0.022,
+    defaultFOV: 105,
+    sensDecimals: 2,
+    proRange: { min: 0.8, max: 2.6, median: 1.35 },
+    samplePros: [
+      { name: 'shroud', team: 'Streamer', dpi: 800, sens: 1.4, edpi: 1120 },
+      { name: 'LVNDMARK', team: 'Streamer', dpi: 400, sens: 1.8, edpi: 720 },
+      { name: 'StankRat', team: 'Creator', dpi: 800, sens: 1.25, edpi: 1000 }
+    ]
   }
 };
 

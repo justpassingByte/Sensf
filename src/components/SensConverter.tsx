@@ -55,6 +55,7 @@ export const SensConverter: React.FC<Props> = ({
   const gamesList: SupportedGame[] = [
     'cs2',
     'valorant',
+    'deltaforce',
     'apex',
     'overwatch2',
     'rainbow6',

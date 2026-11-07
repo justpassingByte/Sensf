@@ -6,7 +6,8 @@ export type SupportedGame =
   | 'rainbow6'
   | 'cod'
   | 'pubg'
-  | 'fortnite';
+  | 'fortnite'
+  | 'deltaforce';
 
 export interface GameConfig {
   id: SupportedGame;

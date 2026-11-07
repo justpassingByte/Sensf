@@ -543,7 +543,10 @@ export const PsaFinder: React.FC<Props> = ({
               Quy đổi đồng bộ sang các tựa game
             </div>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
-              {(['cs2', 'valorant', 'apex', 'overwatch2'] as SupportedGame[]).map((gKey) => {
+              {(['cs2', 'valorant', 'deltaforce', 'apex', 'overwatch2'] as SupportedGame[])
+                .filter((gKey) => gKey !== selectedGame)
+                .slice(0, 4)
+                .map((gKey) => {
                 const converted = convertSens(selectedGame, psaState.optimalSens!, dpi, gKey, dpi);
                 return (
                   <div key={gKey} className="bg-[#0e121a] p-3 rounded-lg steam-border">

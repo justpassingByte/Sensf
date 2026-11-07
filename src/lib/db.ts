@@ -34,7 +34,8 @@ export const DEFAULT_GAME_SENS: Record<SupportedGame, number> = {
   rainbow6: 9.0,
   cod: 4.8,
   pubg: 40.0,
-  fortnite: 8.0
+  fortnite: 8.0,
+  deltaforce: 1.15
 };
 
 export class SensDatabase {
