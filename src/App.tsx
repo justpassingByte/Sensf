@@ -135,7 +135,7 @@ export const App: React.FC = () => {
           {/* Brand Identity */}
           <div className="flex items-center gap-3 shrink-0">
             <img
-              src="/logo.svg"
+              src={`${import.meta.env.BASE_URL}logo.svg`}
               alt="SensFinder Logo"
               className="w-8 h-8 object-contain drop-shadow-[0_0_16px_rgba(0,229,153,0.4)]"
             />
