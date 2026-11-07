@@ -7,6 +7,130 @@ import { MousePointer, Play, Maximize2, Minimize2, ZoomIn, ZoomOut, Crosshair, S
 
 export { type DrillMode, type DrillDifficulty, type DrillAngle, DIFFICULTY_CONFIGS };
 
+function createAimLabPistol() {
+  const gunGroup = new THREE.Group();
+
+  // Premium Materials
+  const darkMetalMat = new THREE.MeshStandardMaterial({
+    color: 0x181e29,
+    metalness: 0.82,
+    roughness: 0.28,
+  });
+  const slideTopMat = new THREE.MeshStandardMaterial({
+    color: 0x222a38,
+    metalness: 0.9,
+    roughness: 0.2,
+  });
+  const gripMat = new THREE.MeshStandardMaterial({
+    color: 0x0c0f14,
+    metalness: 0.2,
+    roughness: 0.8,
+  });
+  const voltGlowMat = new THREE.MeshBasicMaterial({
+    color: 0x00e599,
+  });
+  const cyanGlowMat = new THREE.MeshBasicMaterial({
+    color: 0x00e5ff,
+  });
+
+  // 1. Slide / Upper Receiver
+  const slideGeo = new THREE.BoxGeometry(0.046, 0.05, 0.24);
+  const slideMesh = new THREE.Mesh(slideGeo, slideTopMat);
+  slideMesh.position.set(0, 0.02, -0.06);
+  gunGroup.add(slideMesh);
+
+  // Slide Chamfer / Top Rib
+  const ribGeo = new THREE.BoxGeometry(0.024, 0.012, 0.23);
+  const ribMesh = new THREE.Mesh(ribGeo, darkMetalMat);
+  ribMesh.position.set(0, 0.048, -0.06);
+  gunGroup.add(ribMesh);
+
+  // 2. Barrel Tip / Muzzle Brake
+  const barrelGeo = new THREE.CylinderGeometry(0.013, 0.013, 0.05, 16);
+  barrelGeo.rotateX(Math.PI / 2);
+  const barrelMesh = new THREE.Mesh(barrelGeo, darkMetalMat);
+  barrelMesh.position.set(0, 0.02, -0.19);
+  gunGroup.add(barrelMesh);
+
+  // Barrel Hole (Black cavity)
+  const holeGeo = new THREE.CylinderGeometry(0.007, 0.007, 0.015, 12);
+  holeGeo.rotateX(Math.PI / 2);
+  const holeMat = new THREE.MeshBasicMaterial({ color: 0x000000 });
+  const holeMesh = new THREE.Mesh(holeGeo, holeMat);
+  holeMesh.position.set(0, 0.02, -0.216);
+  gunGroup.add(holeMesh);
+
+  // 3. Neon Cyber Accent Stripe (Aim Lab Volt Style)
+  const stripGeo = new THREE.BoxGeometry(0.048, 0.005, 0.18);
+  const stripMesh = new THREE.Mesh(stripGeo, voltGlowMat);
+  stripMesh.position.set(0, 0.046, -0.05);
+  gunGroup.add(stripMesh);
+
+  // 4. Lower Receiver Frame
+  const frameGeo = new THREE.BoxGeometry(0.042, 0.038, 0.19);
+  const frameMesh = new THREE.Mesh(frameGeo, darkMetalMat);
+  frameMesh.position.set(0, -0.018, -0.04);
+  gunGroup.add(frameMesh);
+
+  // 5. Pistol Grip (Angled ergonomic grip)
+  const gripGeo = new THREE.BoxGeometry(0.04, 0.135, 0.068);
+  const gripMesh = new THREE.Mesh(gripGeo, gripMat);
+  gripMesh.position.set(0, -0.08, 0.012);
+  gripMesh.rotation.x = 0.28; // ~16 deg ergonomic tilt
+  gunGroup.add(gripMesh);
+
+  // Grip Neon Inset Plate
+  const gripPlateGeo = new THREE.BoxGeometry(0.042, 0.09, 0.012);
+  const gripPlate = new THREE.Mesh(gripPlateGeo, voltGlowMat);
+  gripPlate.position.set(0, -0.08, 0.045);
+  gripPlate.rotation.x = 0.28;
+  gunGroup.add(gripPlate);
+
+  // 6. Trigger Guard & Trigger
+  const guardGeo = new THREE.BoxGeometry(0.015, 0.038, 0.06);
+  const guardMesh = new THREE.Mesh(guardGeo, darkMetalMat);
+  guardMesh.position.set(0, -0.048, -0.035);
+  gunGroup.add(guardMesh);
+
+  const triggerGeo = new THREE.BoxGeometry(0.008, 0.022, 0.012);
+  const triggerMesh = new THREE.Mesh(triggerGeo, voltGlowMat);
+  triggerMesh.position.set(0, -0.042, -0.025);
+  triggerMesh.rotation.x = -0.2;
+  gunGroup.add(triggerMesh);
+
+  // 7. Tactical Iron Sights
+  // Front Sight (Cyan dot)
+  const frontSightGeo = new THREE.BoxGeometry(0.006, 0.014, 0.008);
+  const frontSight = new THREE.Mesh(frontSightGeo, cyanGlowMat);
+  frontSight.position.set(0, 0.056, -0.17);
+  gunGroup.add(frontSight);
+
+  // Rear Sights (Dual Volt Green dots)
+  const rearSightLeftGeo = new THREE.BoxGeometry(0.005, 0.012, 0.006);
+  const rearSightLeft = new THREE.Mesh(rearSightLeftGeo, voltGlowMat);
+  rearSightLeft.position.set(-0.015, 0.055, 0.045);
+  gunGroup.add(rearSightLeft);
+
+  const rearSightRight = new THREE.Mesh(rearSightLeftGeo, voltGlowMat);
+  rearSightRight.position.set(0.015, 0.055, 0.045);
+  gunGroup.add(rearSightRight);
+
+  // 8. Muzzle Flash Flare (Stylized Star/Diamond)
+  const flashGeo = new THREE.OctahedronGeometry(0.045, 0);
+  const flashMat = new THREE.MeshBasicMaterial({
+    color: 0xfff066,
+    transparent: true,
+    opacity: 0,
+    depthWrite: false
+  });
+  const muzzleFlash = new THREE.Mesh(flashGeo, flashMat);
+  muzzleFlash.position.set(0, 0.02, -0.25);
+  muzzleFlash.scale.set(1, 1, 1.8);
+  gunGroup.add(muzzleFlash);
+
+  return { gunGroup, muzzleFlash };
+}
+
 interface Props {
   game: SupportedGame;
   sensitivity: number;
@@ -49,6 +173,20 @@ export const FpsRange3D: React.FC<Props> = ({
   const [isRunning, setIsRunning] = useState(false);
   const [hitmarker, setHitmarker] = useState(false);
   const [liveStats, setLiveStats] = useState({ hits: 0, shots: 0, accuracy: 0 });
+
+  const [showGun, setShowGun] = useState(true);
+  const showGunRef = useRef(true);
+  const gunGroupRef = useRef<THREE.Group | null>(null);
+  const muzzleFlashRef = useRef<THREE.Mesh | null>(null);
+  const recoilOffsetRef = useRef({ y: 0, z: 0 });
+  const recoilRotRef = useRef({ x: 0 });
+
+  useEffect(() => {
+    showGunRef.current = showGun;
+    if (gunGroupRef.current) {
+      gunGroupRef.current.visible = showGun;
+    }
+  }, [showGun]);
 
   const isZoomed = externalZoom !== undefined ? externalZoom : internalZoom;
   const toggleZoom = onToggleZoom || (() => setInternalZoom((z) => !z));
@@ -330,6 +468,16 @@ export const FpsRange3D: React.FC<Props> = ({
     scene.add(targetMesh);
     targetMeshRef.current = targetMesh;
 
+    // 5. Aim Lab Tactical First-Person Pistol attached to Camera
+    const { gunGroup, muzzleFlash } = createAimLabPistol();
+    gunGroupRef.current = gunGroup;
+    muzzleFlashRef.current = muzzleFlash;
+    gunGroup.position.set(0.23, -0.19, -0.42);
+    gunGroup.rotation.set(0.04, -0.05, 0.02);
+    gunGroup.visible = showGunRef.current;
+    camera.add(gunGroup);
+    scene.add(camera);
+
     // Handle Resize
     const handleResize = () => {
       if (!canvasContainerRef.current || !rendererRef.current || !cameraRef.current) return;
@@ -346,6 +494,9 @@ export const FpsRange3D: React.FC<Props> = ({
     return () => {
       window.removeEventListener('resize', handleResize);
       if (reqIdRef.current) cancelAnimationFrame(reqIdRef.current);
+      if (camera && gunGroup) {
+        camera.remove(gunGroup);
+      }
       renderer.dispose();
       if (canvasContainer.contains(renderer.domElement)) {
         canvasContainer.removeChild(renderer.domElement);
@@ -502,7 +653,15 @@ export const FpsRange3D: React.FC<Props> = ({
 
       sound.playGunshot();
       metricsRef.current.shots += 1;
-      // Jitter fix: Clean shot without fake recoil pitch kicks!
+
+      // Realistic 3D gun recoil kick & muzzle flash flare
+      recoilOffsetRef.current.z = 0.048;
+      recoilOffsetRef.current.y = 0.014;
+      recoilRotRef.current.x = 0.16;
+      if (muzzleFlashRef.current) {
+        (muzzleFlashRef.current.material as THREE.MeshBasicMaterial).opacity = 1.0;
+        muzzleFlashRef.current.rotation.z = Math.random() * Math.PI * 2;
+      }
 
       if (cameraRef.current && sceneRef.current && targetMeshRef.current) {
         const raycaster = new THREE.Raycaster();
@@ -588,6 +747,46 @@ export const FpsRange3D: React.FC<Props> = ({
               (target.material as THREE.MeshStandardMaterial).emissive.set(targetColor);
             }
           }
+        }
+      }
+
+      // 3D Pistol Weapon Recoil Recovery, Muzzle Flash, and Natural Idle Sway
+      if (gunGroupRef.current) {
+        gunGroupRef.current.visible = showGunRef.current;
+
+        if (showGunRef.current) {
+          // Lerp recoil back to zero
+          recoilOffsetRef.current.z = THREE.MathUtils.lerp(recoilOffsetRef.current.z, 0, dt * 18);
+          recoilOffsetRef.current.y = THREE.MathUtils.lerp(recoilOffsetRef.current.y, 0, dt * 18);
+          recoilRotRef.current.x = THREE.MathUtils.lerp(recoilRotRef.current.x, 0, dt * 18);
+
+          // Fade muzzle flash
+          if (muzzleFlashRef.current) {
+            const flashMat = muzzleFlashRef.current.material as THREE.MeshBasicMaterial;
+            if (flashMat.opacity > 0) {
+              flashMat.opacity = Math.max(0, flashMat.opacity - dt * 28);
+            }
+          }
+
+          // Natural breathing idle sway
+          const swayTime = now * 0.0024;
+          const swayX = Math.sin(swayTime) * 0.0016;
+          const swayY = Math.cos(swayTime * 2) * 0.0012;
+
+          const restX = isZoomedRef.current ? 0.0 : 0.23;
+          const restY = isZoomedRef.current ? -0.24 : -0.19;
+          const restZ = -0.42;
+
+          gunGroupRef.current.position.set(
+            restX + swayX,
+            restY + swayY + recoilOffsetRef.current.y,
+            restZ + recoilOffsetRef.current.z
+          );
+          gunGroupRef.current.rotation.set(
+            0.04 + recoilRotRef.current.x,
+            -0.05,
+            0.02
+          );
         }
       }
 
@@ -843,6 +1042,24 @@ export const FpsRange3D: React.FC<Props> = ({
                 <span className="hidden sm:inline">Ngắm ADS</span>
               </>
             )}
+          </button>
+
+          {/* 3D Pistol Weapon Toggle Button */}
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              setShowGun((prev) => !prev);
+            }}
+            className={`px-2.5 py-1.5 rounded-lg steam-border backdrop-blur-md text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer ${
+              showGun
+                ? 'bg-[#182030] text-volt-400 border-volt-500/40 hover:bg-[#202a40]'
+                : 'bg-[#111520]/90 text-slate-400 hover:text-slate-200 hover:bg-[#1a2030]'
+            }`}
+            title="Bật/Tắt hiển thị khẩu súng lục Aim Lab 3D"
+          >
+            <Shield className="w-3.5 h-3.5 text-volt-500" />
+            <span className="hidden sm:inline">{showGun ? 'Khẩu Lục: BẬT' : 'Khẩu Lục: TẮT'}</span>
           </button>
 
           {mode === 'flicking' && liveStats.shots > 0 && (
