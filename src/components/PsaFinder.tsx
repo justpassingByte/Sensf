@@ -4,7 +4,7 @@ import { CrosshairConfig, DrillResult, SupportedGame, DrillDifficulty, DIFFICULT
 import { GAME_CONFIGS, calculateCm360, getSpeedCategory, convertSens } from '../lib/sensCalculator';
 import { FpsRange3D, DrillMode } from './FpsRange3D';
 import { initPsaSession, advancePsaRound, PsaState, calculateDrillScore } from '../lib/psaAlgorithm';
-import { ArrowRight, RotateCcw, Zap, Award, ChevronRight, ZoomIn, ZoomOut, Target } from 'lucide-react';
+import { ArrowRight, RotateCcw, Zap, Award, ChevronRight, ZoomIn, ZoomOut, Target, Shield } from 'lucide-react';
 
 interface Props {
   selectedGame: SupportedGame;
@@ -91,128 +91,202 @@ export const PsaFinder: React.FC<Props> = ({
     <div className="space-y-6">
       {/* Intro Configuration */}
       {!psaState && (
-        <div className="steam-panel rounded-2xl p-6 relative overflow-hidden">
-          <div className="max-w-3xl">
-            <h2 className="text-2xl font-extrabold text-white tracking-tight mb-2">
-              Dò Tìm Độ Nhạy Chuột Phù Hợp Cơ Tay
-            </h2>
-            <p className="text-sm text-slate-200 leading-relaxed mb-6 font-normal">
-              Hệ thống sẽ thử nghiệm hai mức độ nhạy chuột khác nhau qua các bài tập ngắn 12 giây. Dữ liệu độ giật cổ tay, tốc độ bám mục tiêu và số lần vẩy lệch sẽ giúp thuật toán tự động thu hẹp và tìm ra mức độ nhạy tối ưu nhất cho bạn.
-            </p>
-
-            {/* Inputs Panel: 3 Columns on Top, Difficulty Full Width Below */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-              <div className="bg-[#181d2a] p-4 rounded-xl steam-border">
-                <div className="flex items-center justify-between mb-2">
-                  <label className="text-xs font-semibold text-slate-200">
-                    Sens Khởi Điểm
-                  </label>
-                  <span className="text-xs font-bold text-volt-500">{gameConfig.name}</span>
-                </div>
-                <input
-                  type="number"
-                  step="0.01"
-                  value={baseSensInput}
-                  onChange={(e) => setBaseSensInput(Math.max(0.01, parseFloat(e.target.value) || 0.1))}
-                  className="w-full bg-[#0e121a] border border-[#2a3449] rounded-lg px-3 py-2 text-white font-mono font-bold text-lg focus:border-volt-500 focus:outline-none"
-                />
-              </div>
-
-              <div className="bg-[#181d2a] p-4 rounded-xl steam-border flex flex-col justify-between">
-                <label className="text-xs font-semibold text-slate-200 block mb-1">
-                  Cảm Biến Chuột
-                </label>
-                <div className="text-white font-mono font-bold text-lg">
-                  {dpi} <span className="text-xs text-slate-300 font-normal">DPI</span>
-                </div>
-                <div className="text-xs text-slate-300 font-medium">
-                  {calculateCm360(selectedGame, baseSensInput, dpi).toFixed(1)} cm trên 360°
-                </div>
-              </div>
-
-              <div className="bg-[#181d2a] p-4 rounded-xl steam-border">
-                <label className="text-xs font-semibold text-slate-200 block mb-2">
-                  Bài Tập Kiểm Tra
-                </label>
-                <div className="grid grid-cols-2 gap-2">
-                  <button
-                    onClick={() => setDrillMode('flicking')}
-                    className={`px-3 py-2 text-xs font-bold rounded-lg border transition-all cursor-pointer ${
-                      drillMode === 'flicking'
-                        ? 'bg-volt-500 text-black border-volt-500 shadow-volt-glow font-extrabold'
-                        : 'bg-[#0e121a] border-[#2a3449] text-slate-200 hover:text-white'
-                    }`}
-                  >
-                    Flick Bắn Lướt
-                  </button>
-                  <button
-                    onClick={() => setDrillMode('tracking')}
-                    className={`px-3 py-2 text-xs font-bold rounded-lg border transition-all cursor-pointer ${
-                      drillMode === 'tracking'
-                        ? 'bg-volt-500 text-black border-volt-500 shadow-volt-glow font-extrabold'
-                        : 'bg-[#0e121a] border-[#2a3449] text-slate-200 hover:text-white'
-                    }`}
-                  >
-                    Tracking Bám Tâm
-                  </button>
-                </div>
-              </div>
+        <div className="steam-panel rounded-2xl p-6 relative overflow-hidden shadow-hero-card">
+          {/* Header */}
+          <div className="border-b border-[#232938] pb-5 mb-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div>
+              <h2 className="text-2xl font-extrabold text-white tracking-tight flex items-center gap-2.5">
+                <span>Dò Tìm Độ Nhạy Chuột Phù Hợp Cơ Tay</span>
+                <span className="px-2.5 py-0.5 rounded-full bg-volt-500/15 text-volt-400 font-mono text-xs font-bold border border-volt-500/30">
+                  Thuật Toán PSA 5 Vòng
+                </span>
+              </h2>
+              <p className="text-sm text-slate-300 mt-1 max-w-3xl leading-relaxed">
+                Thử nghiệm 2 mức Sens (Thấp vs Cao) qua các bài tập 12 giây để phát hiện xu hướng vẩy hụt tầm (Undershoot) hoặc quá đà (Overshoot), từ đó tìm ra điểm cân bằng hoàn hảo cho cổ tay.
+              </p>
             </div>
 
-            {/* Difficulty Selector: Aim Lab Target Scale */}
-            <div className="bg-[#181d2a] p-4 rounded-xl steam-border mb-6">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-3">
-                <label className="text-xs font-bold text-slate-200 flex items-center gap-2">
-                  <span>Độ Khó Mục Tiêu Dò Sens</span>
-                  <span className="text-[11px] font-normal text-slate-400">
-                    (Kích thước mục tiêu Aim Lab để đo lường độ chính xác cú vẩy chuột)
-                  </span>
-                </label>
-                <span className="text-xs text-volt-400 font-medium">
-                  {DIFFICULTY_CONFIGS[difficulty].description}
-                </span>
-              </div>
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
-                {(['easy', 'medium', 'hard', 'pro'] as DrillDifficulty[]).map((diffKey) => {
-                  const conf = DIFFICULTY_CONFIGS[diffKey];
-                  const isSelected = difficulty === diffKey;
-                  return (
+            <div className="flex items-center gap-2 bg-[#131722] px-3.5 py-1.5 rounded-xl steam-border font-mono text-xs shrink-0 self-start md:self-auto">
+              <span className="text-slate-400">Đang chọn:</span>
+              <span className="font-bold text-volt-500">{gameConfig.name}</span>
+              <span className="text-slate-600">•</span>
+              <span className="text-white">{dpi} DPI</span>
+            </div>
+          </div>
+
+          {/* 2-Column Balanced Layout */}
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+            {/* Left Column (8 cols): Inputs & Difficulty */}
+            <div className="lg:col-span-8 space-y-5">
+              {/* Row 1: 3 Configuration Cards */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div className="bg-[#181d2a] p-4 rounded-xl steam-border">
+                  <div className="flex items-center justify-between mb-2">
+                    <label className="text-xs font-semibold text-slate-200">
+                      Sens Khởi Điểm
+                    </label>
+                    <span className="text-xs font-bold text-volt-500 font-mono">{gameConfig.name}</span>
+                  </div>
+                  <input
+                    type="number"
+                    step="0.01"
+                    value={baseSensInput}
+                    onChange={(e) => setBaseSensInput(Math.max(0.01, parseFloat(e.target.value) || 0.1))}
+                    className="w-full bg-[#0e121a] border border-[#2a3449] rounded-lg px-3 py-2 text-white font-mono font-bold text-lg focus:border-volt-500 focus:outline-none"
+                  />
+                </div>
+
+                <div className="bg-[#181d2a] p-4 rounded-xl steam-border flex flex-col justify-between">
+                  <label className="text-xs font-semibold text-slate-200 block mb-1">
+                    Cảm Biến Chuột (DPI)
+                  </label>
+                  <div className="text-white font-mono font-bold text-lg">
+                    {dpi} <span className="text-xs text-slate-300 font-normal">DPI</span>
+                  </div>
+                  <div className="text-xs text-slate-300 font-medium">
+                    {calculateCm360(selectedGame, baseSensInput, dpi).toFixed(1)} cm / 360°
+                  </div>
+                </div>
+
+                <div className="bg-[#181d2a] p-4 rounded-xl steam-border">
+                  <label className="text-xs font-semibold text-slate-200 block mb-2">
+                    Bài Tập Kiểm Tra
+                  </label>
+                  <div className="grid grid-cols-2 gap-2">
                     <button
-                      key={diffKey}
-                      type="button"
-                      onClick={() => setDifficulty(diffKey)}
-                      className={`p-3 rounded-xl border text-left transition-all cursor-pointer ${
-                        isSelected
-                          ? 'bg-[#222a3d] border-volt-500 shadow-volt-glow'
-                          : 'bg-[#0e121a] border-[#2a3449] hover:border-slate-600'
+                      onClick={() => setDrillMode('flicking')}
+                      className={`px-3 py-2 text-xs font-bold rounded-lg border transition-all cursor-pointer ${
+                        drillMode === 'flicking'
+                          ? 'bg-volt-500 text-black border-volt-500 shadow-volt-glow font-extrabold'
+                          : 'bg-[#0e121a] border-[#2a3449] text-slate-200 hover:text-white'
                       }`}
                     >
-                      <div className="flex items-center justify-between mb-1">
-                        <span className={`text-xs font-extrabold ${isSelected ? 'text-volt-500' : 'text-white'}`}>
-                          {conf.name}
-                        </span>
-                        <span className="text-[11px] font-mono text-slate-400">
-                          r={conf.targetRadius}m
-                        </span>
-                      </div>
-                      <div className="text-[11px] text-slate-300 leading-tight">
-                        {diffKey === 'easy' && 'Mục tiêu to, dễ vẩy'}
-                        {diffKey === 'medium' && 'Chuẩn thi đấu FPS'}
-                        {diffKey === 'hard' && 'Vi chỉnh flick nhỏ'}
-                        {diffKey === 'pro' && 'Headshot điểm ảnh'}
-                      </div>
+                      Flick Bắn Lướt
                     </button>
-                  );
-                })}
+                    <button
+                      onClick={() => setDrillMode('tracking')}
+                      className={`px-3 py-2 text-xs font-bold rounded-lg border transition-all cursor-pointer ${
+                        drillMode === 'tracking'
+                          ? 'bg-volt-500 text-black border-volt-500 shadow-volt-glow font-extrabold'
+                          : 'bg-[#0e121a] border-[#2a3449] text-slate-200 hover:text-white'
+                      }`}
+                    >
+                      Tracking Bám Tâm
+                    </button>
+                  </div>
+                </div>
               </div>
+
+              {/* Row 2: Difficulty Selector Cards */}
+              <div className="bg-[#181d2a] p-4 sm:p-5 rounded-xl steam-border">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-3 pb-2 border-b border-[#232a3b]">
+                  <label className="text-xs font-bold text-white flex items-center gap-2">
+                    <span>Độ Khó Mục Tiêu Aim Lab</span>
+                    <span className="text-[11px] font-normal text-slate-400">
+                      (Kích thước mục tiêu đo độ chính xác vi chỉnh)
+                    </span>
+                  </label>
+                  <span className="text-xs text-volt-400 font-medium">
+                    {DIFFICULTY_CONFIGS[difficulty].description}
+                  </span>
+                </div>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                  {(['easy', 'medium', 'hard', 'pro'] as DrillDifficulty[]).map((diffKey) => {
+                    const conf = DIFFICULTY_CONFIGS[diffKey];
+                    const isSelected = difficulty === diffKey;
+                    return (
+                      <button
+                        key={diffKey}
+                        type="button"
+                        onClick={() => setDifficulty(diffKey)}
+                        className={`p-3.5 rounded-xl border text-left transition-all cursor-pointer ${
+                          isSelected
+                            ? 'bg-[#222a3d] border-volt-500 shadow-volt-glow ring-1 ring-volt-500/50'
+                            : 'bg-[#0e121a] border-[#2a3449] hover:border-slate-500 hover:bg-[#121622]'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between mb-1.5">
+                          <span className={`text-xs font-black uppercase tracking-wider ${isSelected ? 'text-volt-500' : 'text-white'}`}>
+                            {conf.name}
+                          </span>
+                          <span className="text-[11px] font-mono text-slate-400">
+                            r={conf.targetRadius}m
+                          </span>
+                        </div>
+                        <div className="text-[11px] text-slate-300 leading-snug">
+                          {diffKey === 'easy' && 'Mục tiêu to, dễ vẩy cho người mới'}
+                          {diffKey === 'medium' && 'Kích thước chuẩn thi đấu FPS'}
+                          {diffKey === 'hard' && 'Mục tiêu nhỏ luyện micro-flick'}
+                          {diffKey === 'pro' && 'Mục tiêu siêu nhỏ headshot pixel'}
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Start Button */}
+              <button
+                onClick={handleStartPsa}
+                className="w-full sm:w-auto px-10 py-3.5 bg-volt-500 hover:bg-volt-400 text-black font-black rounded-xl shadow-volt-glow transition-all flex items-center justify-center gap-2 text-sm uppercase tracking-wider active:scale-95 cursor-pointer font-mono"
+              >
+                <Zap className="w-4 h-4 fill-black" /> Bắt đầu kiểm tra PSA (5 vòng)
+              </button>
             </div>
 
-            <button
-              onClick={handleStartPsa}
-              className="px-8 py-3 bg-volt-500 hover:bg-volt-600 text-black font-extrabold rounded-xl shadow-volt-glow transition-all flex items-center gap-2 text-xs uppercase tracking-wider active:scale-95 cursor-pointer"
-            >
-              <Zap className="w-4 h-4 fill-black" /> Bắt đầu kiểm tra
-            </button>
+            {/* Right Column (4 cols): Protocol Guide & Pro Tips (Fills the right side!) */}
+            <div className="lg:col-span-4 bg-[#141926] p-5 rounded-xl steam-border space-y-4">
+              <div className="flex items-center gap-2 pb-3 border-b border-[#222a3d]">
+                <Shield className="w-4 h-4 text-volt-500" />
+                <h3 className="text-xs font-bold text-white uppercase tracking-wider font-mono">
+                  Quy Trình Dò Sens PSA
+                </h3>
+              </div>
+
+              <div className="space-y-3.5 text-xs">
+                <div className="flex items-start gap-2.5">
+                  <div className="w-5 h-5 rounded-full bg-volt-500/15 text-volt-400 font-bold flex items-center justify-center shrink-0 font-mono text-[11px] border border-volt-500/30">
+                    1
+                  </div>
+                  <div>
+                    <strong className="text-white block">Thử Sens Thấp & Sens Cao</strong>
+                    <p className="text-slate-300 text-[11px] mt-0.5 leading-relaxed">
+                      Mỗi vòng bạn sẽ bắn thử 12 giây ở 2 mức Sens chênh lệch nhau để so sánh cảm giác cơ tay.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-start gap-2.5">
+                  <div className="w-5 h-5 rounded-full bg-volt-500/15 text-volt-400 font-bold flex items-center justify-center shrink-0 font-mono text-[11px] border border-volt-500/30">
+                    2
+                  </div>
+                  <div>
+                    <strong className="text-white block">Phát hiện Lố tâm / Hụt tầm</strong>
+                    <p className="text-slate-300 text-[11px] mt-0.5 leading-relaxed">
+                      Thuật toán tự động đo độ vẩy chuột vượt qua mục tiêu (Overshoot) hoặc chưa tới (Undershoot).
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-start gap-2.5">
+                  <div className="w-5 h-5 rounded-full bg-volt-500/15 text-volt-400 font-bold flex items-center justify-center shrink-0 font-mono text-[11px] border border-volt-500/30">
+                    3
+                  </div>
+                  <div>
+                    <strong className="text-white block">Tìm ra Golden Sens sau 5 vòng</strong>
+                    <p className="text-slate-300 text-[11px] mt-0.5 leading-relaxed">
+                      Sau 5 vòng thu hẹp dải tìm kiếm, hệ thống xác định con số độ nhạy vàng lý tưởng nhất cho bạn.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Pro Tip Box */}
+              <div className="p-3.5 bg-[#0d1017] rounded-xl steam-border text-[11px] text-slate-300 leading-relaxed border-l-2 border-volt-500">
+                <strong className="text-volt-400 block mb-1">Mẹo chuẩn bị thi đấu:</strong>
+                Hãy ngồi đúng tư thế cầm chuột thường ngày, đặt cẳng tay thoải mái trên bàn và chuẩn bị sẵn sàng trước khi nhấn nút.
+              </div>
+            </div>
           </div>
         </div>
       )}
