@@ -141,6 +141,8 @@ interface Props {
   isZoomed?: boolean;
   onToggleZoom?: () => void;
   durationSeconds?: number;
+  stageTitle?: string;
+  customOverlay?: React.ReactNode;
   crosshair: CrosshairConfig;
   targetColor?: string;
   isActive: boolean;
@@ -158,6 +160,8 @@ export const FpsRange3D: React.FC<Props> = ({
   isZoomed: externalZoom,
   onToggleZoom,
   durationSeconds = 15,
+  stageTitle,
+  customOverlay,
   crosshair,
   targetColor = '#ffea00',
   isActive,
@@ -205,6 +209,17 @@ export const FpsRange3D: React.FC<Props> = ({
   const targetMeshRef = useRef<THREE.Mesh | null>(null);
   const targetVelocityRef = useRef(new THREE.Vector3(3.0, 1.2, 0));
   const targetSpawnTimeRef = useRef(performance.now());
+  const spawnFlickTargetRef = useRef<(() => void) | null>(null);
+  const trackingAngleRef = useRef(0);
+
+  // Tactical Off-screen indicator state
+  const [offScreenInfo, setOffScreenInfo] = useState<{ isOff: boolean; isBehind: boolean; angleDeg: number; side: 'left' | 'right' }>({
+    isOff: false,
+    isBehind: false,
+    angleDeg: 0,
+    side: 'left'
+  });
+  const offScreenInfoRef = useRef({ isOff: false, isBehind: false, angleDeg: 0, side: 'left' as 'left' | 'right' });
 
   // Metrics collection
   const metricsRef = useRef({
@@ -246,6 +261,10 @@ export const FpsRange3D: React.FC<Props> = ({
     if (!isRunning) {
       setIsRunning(true);
       resetStats();
+      trackingAngleRef.current = 0;
+      if (mode === 'flicking') {
+        spawnFlickTargetRef.current?.();
+      }
     }
     setIsLocked(true);
 
@@ -638,6 +657,11 @@ export const FpsRange3D: React.FC<Props> = ({
       targetSpawnTimeRef.current = performance.now();
     };
 
+    spawnFlickTargetRef.current = spawnFlickTarget;
+    if (mode === 'flicking') {
+      spawnFlickTarget();
+    }
+
     const onMouseDown = (e: MouseEvent) => {
       if (!isLockedRef.current && document.pointerLockElement !== containerRef.current) return;
 
@@ -735,16 +759,40 @@ export const FpsRange3D: React.FC<Props> = ({
 
         if (mode === 'tracking') {
           const speedMult = DIFFICULTY_CONFIGS[difficulty]?.speedMultiplier || 1.0;
-          const currentSpeed = 3.2 * speedMult;
-          const dir = Math.sign(targetVelocityRef.current.x) || 1;
-          target.position.x += dir * currentSpeed * dt;
-          target.position.y = 1.7 + Math.sin(now * 0.0022 * speedMult) * 0.9;
-          target.position.z = -8.5 + Math.cos(now * 0.0016 * speedMult) * 1.5;
+          const currentSpeed = 0.65 * speedMult; // angular speed (rad/s)
+          const radius = 8.5;
 
-          if (target.position.x > 5.5) {
-            targetVelocityRef.current.x = -1;
-          } else if (target.position.x < -5.5) {
-            targetVelocityRef.current.x = 1;
+          if (angle === '360') {
+            // Full 360-degree continuous orbit around player
+            trackingAngleRef.current += currentSpeed * dt;
+            target.position.x = Math.sin(trackingAngleRef.current) * radius;
+            target.position.z = -Math.cos(trackingAngleRef.current) * radius;
+            target.position.y = 1.7 + Math.sin(now * 0.0022 * speedMult) * 0.9;
+          } else if (angle === '180') {
+            // 180-degree semicircle sweep (-85 deg to +85 deg)
+            const dir = Math.sign(targetVelocityRef.current.x) || 1;
+            trackingAngleRef.current += dir * currentSpeed * dt;
+            const maxRad = Math.PI * 0.48;
+            if (trackingAngleRef.current > maxRad) {
+              targetVelocityRef.current.x = -1;
+            } else if (trackingAngleRef.current < -maxRad) {
+              targetVelocityRef.current.x = 1;
+            }
+            target.position.x = Math.sin(trackingAngleRef.current) * radius;
+            target.position.z = -Math.cos(trackingAngleRef.current) * radius;
+            target.position.y = 1.7 + Math.sin(now * 0.0022 * speedMult) * 0.9;
+          } else {
+            // 90-degree forward wall sweep
+            const dir = Math.sign(targetVelocityRef.current.x) || 1;
+            target.position.x += dir * (3.2 * speedMult) * dt;
+            target.position.y = 1.7 + Math.sin(now * 0.0022 * speedMult) * 0.9;
+            target.position.z = -8.5 + Math.cos(now * 0.0016 * speedMult) * 1.5;
+
+            if (target.position.x > 5.5) {
+              targetVelocityRef.current.x = -1;
+            } else if (target.position.x < -5.5) {
+              targetVelocityRef.current.x = 1;
+            }
           }
 
           if (isLocked && cameraRef.current) {
@@ -761,6 +809,25 @@ export const FpsRange3D: React.FC<Props> = ({
               (target.material as THREE.MeshStandardMaterial).color.set(targetColor);
               (target.material as THREE.MeshStandardMaterial).emissive.set(targetColor);
             }
+          }
+        }
+
+        // Calculate Tactical Off-Screen Indicator for 180° and 360°
+        if (cameraRef.current && (angle === '180' || angle === '360')) {
+          const local = target.position.clone().applyMatrix4(cameraRef.current.matrixWorldInverse);
+          const isBehind = local.z > 0;
+          const proj = target.position.clone().project(cameraRef.current);
+          const isOffScreen = isBehind || Math.abs(proj.x) > 0.82 || Math.abs(proj.y) > 0.82;
+
+          if (isOffScreen) {
+            const angleDeg = Math.round(Math.atan2(local.x, -local.z) * (180 / Math.PI));
+            if (!offScreenInfoRef.current.isOff || Math.abs(angleDeg - offScreenInfoRef.current.angleDeg) > 8) {
+              offScreenInfoRef.current = { isOff: true, isBehind, angleDeg, side: local.x >= 0 ? 'right' : 'left' };
+              setOffScreenInfo({ isOff: true, isBehind, angleDeg, side: local.x >= 0 ? 'right' : 'left' });
+            }
+          } else if (offScreenInfoRef.current.isOff) {
+            offScreenInfoRef.current = { isOff: false, isBehind: false, angleDeg: 0, side: 'left' };
+            setOffScreenInfo({ isOff: false, isBehind: false, angleDeg: 0, side: 'left' });
           }
         }
       }
@@ -1111,8 +1178,38 @@ export const FpsRange3D: React.FC<Props> = ({
         </div>
       </div>
 
-      {/* Center Lock Call-to-action */}
-      {!isLocked && (
+      {/* Tactical Off-Screen Directional Indicator for 180° and 360° */}
+      {isRunning && isLocked && offScreenInfo.isOff && (
+        <div className="absolute inset-0 pointer-events-none z-30">
+          {offScreenInfo.isBehind ? (
+            <div className="absolute bottom-14 left-1/2 -translate-x-1/2 flex items-center gap-2.5 bg-[#0e131d]/90 border border-volt-500/80 backdrop-blur-md px-4 py-2 rounded-xl text-volt-400 font-mono text-xs font-black animate-pulse shadow-volt-glow pointer-events-none">
+              <span className="text-base text-volt-500 font-black">⬇</span>
+              <span>MỤC TIÊU Ở PHÍA SAU ({offScreenInfo.angleDeg}°) • QUAY NGƯỜI LẠI</span>
+              <span className="text-base text-volt-500 font-black">⬇</span>
+            </div>
+          ) : offScreenInfo.side === 'left' ? (
+            <div className="absolute left-4 top-1/2 -translate-y-1/2 flex items-center gap-2 bg-[#0e131d]/90 border border-volt-500/80 backdrop-blur-md px-3.5 py-2 rounded-xl text-volt-400 font-mono text-xs font-black animate-pulse shadow-volt-glow pointer-events-none">
+              <span className="text-lg text-volt-500">◀◀</span>
+              <span className="hidden sm:inline">MỤC TIÊU BÊN TRÁI ({Math.abs(offScreenInfo.angleDeg)}°)</span>
+            </div>
+          ) : (
+            <div className="absolute right-4 top-1/2 -translate-y-1/2 flex items-center gap-2 bg-[#0e131d]/90 border border-volt-500/80 backdrop-blur-md px-3.5 py-2 rounded-xl text-volt-400 font-mono text-xs font-black animate-pulse shadow-volt-glow pointer-events-none">
+              <span className="hidden sm:inline">MỤC TIÊU BÊN PHẢI ({Math.abs(offScreenInfo.angleDeg)}°)</span>
+              <span className="text-lg text-volt-500">▶▶</span>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Custom Fullscreen Overlay (e.g. PSA Review & Choice Cards inside persistent Fullscreen) */}
+      {customOverlay && (
+        <div className="absolute inset-0 bg-[#07090f]/94 backdrop-blur-md flex items-center justify-center p-4 z-40 overflow-y-auto">
+          {customOverlay}
+        </div>
+      )}
+
+      {/* Center Lock Call-to-action (when not locked and no customOverlay) */}
+      {!isLocked && !customOverlay && (
         <div
           onClick={handleLock}
           className="absolute inset-0 bg-[#07090f]/85 backdrop-blur-sm flex flex-col items-center justify-center p-6 text-center cursor-pointer transition-all hover:bg-[#07090f]/80 z-40"
@@ -1121,7 +1218,7 @@ export const FpsRange3D: React.FC<Props> = ({
             <MousePointer className="w-7 h-7 animate-pulse" />
           </div>
           <h3 className="text-xl sm:text-2xl font-black text-white mb-2 tracking-tight pointer-events-none">
-            {isRunning ? 'Tạm Dừng - Nhấp Để Tiếp Tục' : 'Phòng Luyện Phản Xạ Aim Lab'}
+            {stageTitle || (isRunning ? 'Tạm Dừng - Nhấp Để Tiếp Tục' : 'Phòng Luyện Phản Xạ Aim Lab')}
           </h3>
           <p className="text-xs sm:text-sm text-slate-300 max-w-lg text-center mb-6 leading-relaxed pointer-events-none">
             Khóa con trỏ và nhận tín hiệu chuột trực tiếp 1:1 không gia tốc. Nhấp chuột hoặc bấm nút bên dưới để bắt đầu.

@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
 import confetti from 'canvas-confetti';
-import { BenchmarkPoint, CrosshairConfig, DrillResult, SupportedGame, DrillDifficulty, DrillMode, DIFFICULTY_CONFIGS } from '../types';
+import { BenchmarkPoint, CrosshairConfig, DrillResult, SupportedGame, DrillDifficulty, DrillMode, DrillAngle, DIFFICULTY_CONFIGS } from '../types';
 import { GAME_CONFIGS, calculateCm360 } from '../lib/sensCalculator';
 import { FpsRange3D } from './FpsRange3D';
 import { calculateDrillScore } from '../lib/psaAlgorithm';
-import { BarChart3, Play, ZoomIn, ZoomOut, TrendingUp, Award, Shield } from 'lucide-react';
+import { BarChart3, Play, ZoomIn, ZoomOut, TrendingUp, Award, Shield, ArrowRight, RotateCcw } from 'lucide-react';
 
 interface Props {
   selectedGame: SupportedGame;
@@ -29,6 +29,7 @@ export const BenchmarkFinder: React.FC<Props> = ({
   const [maxSens, setMaxSens] = useState<number>(() => Number((currentSens * 1.5).toFixed(2)));
   const [drillMode, setDrillMode] = useState<DrillMode>('flicking');
   const [difficulty, setDifficulty] = useState<DrillDifficulty>('medium');
+  const [drillAngle, setDrillAngle] = useState<DrillAngle>('90');
   const [isZoomed, setIsZoomed] = useState(false);
   const [numSteps] = useState<number>(5);
 
@@ -37,6 +38,12 @@ export const BenchmarkFinder: React.FC<Props> = ({
   const [points, setPoints] = useState<BenchmarkPoint[]>([]);
   const [testPoints, setTestPoints] = useState<number[]>([]);
   const [bestSens, setBestSens] = useState<BenchmarkPoint | null>(null);
+  const [intermission, setIntermission] = useState<{
+    result: DrillResult;
+    testedSens: number;
+    completedStep: number;
+    nextSens: number;
+  } | null>(null);
 
   const handleStart = () => {
     const validMin = isNaN(minSens) || minSens <= 0 ? 0.1 : minSens;
@@ -50,6 +57,7 @@ export const BenchmarkFinder: React.FC<Props> = ({
     setPoints([]);
     setCurrentStepIndex(0);
     setIsRunning(true);
+    setIntermission(null);
     setBestSens(null);
   };
 
@@ -73,9 +81,15 @@ export const BenchmarkFinder: React.FC<Props> = ({
     setPoints(nextPoints);
 
     if (currentStepIndex + 1 < testPoints.length) {
-      setCurrentStepIndex((prev) => prev + 1);
+      setIntermission({
+        result,
+        testedSens,
+        completedStep: currentStepIndex + 1,
+        nextSens: testPoints[currentStepIndex + 1]
+      });
     } else {
       setIsRunning(false);
+      setIntermission(null);
       const sorted = [...nextPoints].sort((a, b) => b.score - a.score);
       const peak = sorted[0];
       setBestSens(peak);
@@ -84,8 +98,14 @@ export const BenchmarkFinder: React.FC<Props> = ({
     }
   };
 
+  const handleContinueNextStep = () => {
+    setIntermission(null);
+    setCurrentStepIndex((prev) => prev + 1);
+  };
+
   const handleReset = () => {
     setIsRunning(false);
+    setIntermission(null);
     setPoints([]);
     setCurrentStepIndex(0);
     setBestSens(null);
@@ -237,6 +257,52 @@ export const BenchmarkFinder: React.FC<Props> = ({
                 </div>
               </div>
 
+              {/* Row 3: Combat Angle Selector */}
+              <div className="bg-[#181d2a] p-4 sm:p-5 rounded-xl steam-border">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 mb-3 pb-2 border-b border-[#232a3b]">
+                  <label className="text-xs font-bold text-white flex items-center gap-2">
+                    <span>Góc Xuất Hiện Mục Tiêu Quét Benchmark</span>
+                    <span className="text-[11px] font-normal text-slate-400">
+                      (Không gian xuất hiện mục tiêu thực chiến)
+                    </span>
+                  </label>
+                  <span className="text-xs text-volt-400 font-mono font-medium">
+                    {drillAngle === '360' ? '360° Toàn Cảnh (Trước, sườn & sau lưng)' : drillAngle === '180' ? '180° Bán Nguyệt (Trước mặt & hai bên sườn)' : '90° Trước Mặt (Góc hẹp trực diện)'}
+                  </span>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  {[
+                    { id: '90', label: '90° Trước Mặt', tag: 'Trực diện', desc: 'Đấu súng trực diện, phù hợp luyện phản xạ góc hẹp' },
+                    { id: '180', label: '180° Bán Nguyệt', tag: 'Góc rộng', desc: 'Quét mục tiêu nửa vòng tròn, luyện vẩy góc rộng sang 2 bên sườn' },
+                    { id: '360', label: '360° Toàn Cảnh', tag: 'Thực chiến', desc: 'Địch xuất hiện ngẫu nhiên khắp nơi 360°, có radar chỉ hướng' }
+                  ].map((ang) => {
+                    const isSelected = drillAngle === ang.id;
+                    return (
+                      <button
+                        key={ang.id}
+                        type="button"
+                        onClick={() => setDrillAngle(ang.id as DrillAngle)}
+                        className={`p-3.5 rounded-xl border text-left transition-all cursor-pointer ${
+                          isSelected
+                            ? 'bg-[#222a3d] border-volt-500 shadow-volt-glow ring-1 ring-volt-500/50'
+                            : 'bg-[#0e121a] border-[#2a3449] hover:border-slate-500 hover:bg-[#121622]'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between mb-1.5">
+                          <span className={`text-xs font-black uppercase tracking-wider ${isSelected ? 'text-volt-500' : 'text-white'}`}>
+                            {ang.label}
+                          </span>
+                          <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-[#131722] text-slate-400 border border-slate-700">
+                            {ang.tag}
+                          </span>
+                        </div>
+                        <div className="text-[11px] text-slate-300 leading-snug">{ang.desc}</div>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
               {/* Start Button */}
               <button
                 onClick={handleStart}
@@ -369,13 +435,54 @@ export const BenchmarkFinder: React.FC<Props> = ({
             sensitivity={testPoints[currentStepIndex]}
             mode={drillMode}
             difficulty={difficulty}
+            angle={drillAngle}
             isZoomed={isZoomed}
             onToggleZoom={() => setIsZoomed((z) => !z)}
             durationSeconds={12}
             crosshair={crosshair}
             targetColor={targetColor}
             isActive={true}
+            stageTitle={`Mốc ${currentStepIndex + 1} / ${testPoints.length}: Bắn Thử Sens ${testPoints[currentStepIndex]}`}
             onComplete={handleStepComplete}
+            customOverlay={
+              intermission ? (
+                <div className="max-w-md w-full bg-[#111520] steam-border rounded-2xl p-6 shadow-2xl animate-in fade-in zoom-in-95 duration-200 text-center">
+                  <div className="w-12 h-12 rounded-xl bg-volt-500/15 border border-volt-500/30 text-volt-500 flex items-center justify-center mx-auto mb-3">
+                    <Award className="w-6 h-6" />
+                  </div>
+                  <div className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1 font-mono">
+                    Hoàn thành Mốc {intermission.completedStep} / {testPoints.length}
+                  </div>
+                  <div className="text-2xl font-black text-white font-mono mb-4">
+                    Sens {intermission.testedSens} • Điểm: <span className="text-volt-500">{calculateDrillScore(intermission.result)}/100</span>
+                  </div>
+
+                  <div className="bg-[#181d2a] p-3.5 rounded-xl steam-border grid grid-cols-3 gap-2 text-center text-xs mb-5">
+                    <div>
+                      <div className="text-[11px] text-slate-400">Độ chuẩn xác</div>
+                      <div className="font-mono font-bold text-white text-sm mt-0.5">{intermission.result.accuracy}%</div>
+                    </div>
+                    <div>
+                      <div className="text-[11px] text-slate-400">Phản xạ TB</div>
+                      <div className="font-mono font-bold text-white text-sm mt-0.5">{intermission.result.avgReactionTimeMs}ms</div>
+                    </div>
+                    <div>
+                      <div className="text-[11px] text-slate-400">Độ mượt chuột</div>
+                      <div className="font-mono font-bold text-white text-sm mt-0.5">{intermission.result.smoothness}%</div>
+                    </div>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={handleContinueNextStep}
+                    className="w-full py-3.5 bg-volt-500 hover:bg-volt-400 text-black font-black rounded-xl text-xs uppercase tracking-wider transition-all shadow-volt-glow active:scale-95 cursor-pointer flex items-center justify-center gap-2 font-mono"
+                  >
+                    <span>Bắn Mốc Tiếp Theo (Sens {intermission.nextSens})</span>
+                    <ArrowRight className="w-4 h-4" />
+                  </button>
+                </div>
+              ) : undefined
+            }
           />
         </div>
       )}

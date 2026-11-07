@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import confetti from 'canvas-confetti';
-import { CrosshairConfig, DrillResult, SupportedGame, DrillDifficulty, DIFFICULTY_CONFIGS } from '../types';
+import { CrosshairConfig, DrillResult, SupportedGame, DrillDifficulty, DrillAngle, DIFFICULTY_CONFIGS } from '../types';
 import { GAME_CONFIGS, calculateCm360, getSpeedCategory, convertSens } from '../lib/sensCalculator';
 import { FpsRange3D, DrillMode } from './FpsRange3D';
 import { initPsaSession, advancePsaRound, PsaState, calculateDrillScore } from '../lib/psaAlgorithm';
@@ -28,6 +28,7 @@ export const PsaFinder: React.FC<Props> = ({
   const [baseSensInput, setBaseSensInput] = useState<number>(currentSens);
   const [drillMode, setDrillMode] = useState<DrillMode>('flicking');
   const [difficulty, setDifficulty] = useState<DrillDifficulty>('medium');
+  const [drillAngle, setDrillAngle] = useState<DrillAngle>('90');
   const [isZoomed, setIsZoomed] = useState(false);
   const [psaState, setPsaState] = useState<PsaState | null>(null);
   
@@ -225,6 +226,52 @@ export const PsaFinder: React.FC<Props> = ({
                 </div>
               </div>
 
+              {/* Row 3: Combat Angle Selector */}
+              <div className="bg-[#181d2a] p-4 sm:p-5 rounded-xl steam-border">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 mb-3 pb-2 border-b border-[#232a3b]">
+                  <label className="text-xs font-bold text-white flex items-center gap-2">
+                    <span>Góc Xuất Hiện Mục Tiêu</span>
+                    <span className="text-[11px] font-normal text-slate-400">
+                      (Không gian xuất hiện mục tiêu thực chiến)
+                    </span>
+                  </label>
+                  <span className="text-xs text-volt-400 font-mono font-medium">
+                    {drillAngle === '360' ? '360° Toàn Cảnh (Trước, sườn & sau lưng)' : drillAngle === '180' ? '180° Bán Nguyệt (Trước mặt & hai bên sườn)' : '90° Trước Mặt (Góc hẹp trực diện)'}
+                  </span>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  {[
+                    { id: '90', label: '90° Trước Mặt', tag: 'Trực diện', desc: 'Đấu súng trực diện, phù hợp luyện phản xạ góc hẹp' },
+                    { id: '180', label: '180° Bán Nguyệt', tag: 'Góc rộng', desc: 'Quét mục tiêu nửa vòng tròn, luyện vẩy góc rộng sang 2 bên sườn' },
+                    { id: '360', label: '360° Toàn Cảnh', tag: 'Thực chiến', desc: 'Địch xuất hiện ngẫu nhiên khắp nơi 360°, có radar chỉ hướng' }
+                  ].map((ang) => {
+                    const isSelected = drillAngle === ang.id;
+                    return (
+                      <button
+                        key={ang.id}
+                        type="button"
+                        onClick={() => setDrillAngle(ang.id as DrillAngle)}
+                        className={`p-3.5 rounded-xl border text-left transition-all cursor-pointer ${
+                          isSelected
+                            ? 'bg-[#222a3d] border-volt-500 shadow-volt-glow ring-1 ring-volt-500/50'
+                            : 'bg-[#0e121a] border-[#2a3449] hover:border-slate-500 hover:bg-[#121622]'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between mb-1.5">
+                          <span className={`text-xs font-black uppercase tracking-wider ${isSelected ? 'text-volt-500' : 'text-white'}`}>
+                            {ang.label}
+                          </span>
+                          <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-[#131722] text-slate-400 border border-slate-700">
+                            {ang.tag}
+                          </span>
+                        </div>
+                        <div className="text-[11px] text-slate-300 leading-snug">{ang.desc}</div>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
               {/* Start Button */}
               <button
                 onClick={handleStartPsa}
@@ -356,142 +403,158 @@ export const PsaFinder: React.FC<Props> = ({
             </div>
           </div>
 
-          {/* Test Stage 1: Low Sens */}
-          {testStage === 'low' && (
-            <div>
-              <div className="mb-2 text-xs font-mono text-volt-500 font-bold flex items-center gap-2">
+          {/* Persistent Continuous FpsRange3D (Stays mounted across all 5 rounds and stages without ever exiting Fullscreen) */}
+          <div className="space-y-3">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs font-mono font-bold bg-[#131722] p-3 rounded-xl steam-border">
+              <div className="flex items-center gap-2">
                 <span className="w-2.5 h-2.5 rounded-full bg-volt-500 animate-pulse"></span>
-                Đang thử mức Thấp: {psaState.lowSens} • Quãng xoay: {calculateCm360(selectedGame, psaState.lowSens, dpi).toFixed(1)} cm • Độ khó: {DIFFICULTY_CONFIGS[difficulty].name}
+                <span className={testStage === 'low' ? 'text-volt-500 font-extrabold' : 'text-slate-200'}>
+                  {testStage === 'low'
+                    ? `Vòng ${psaState.currentRound}/5 • Lượt 1/2: Thử Sens Thấp (${psaState.lowSens})`
+                    : testStage === 'high'
+                    ? `Vòng ${psaState.currentRound}/5 • Lượt 2/2: Thử Sens Cao (${psaState.highSens})`
+                    : `Vòng ${psaState.currentRound}/5 • Đã Xong 2 Lượt: So Sánh Kết Quả`}
+                </span>
+                <span className="text-slate-600 hidden sm:inline">•</span>
+                <span className="text-slate-300 hidden sm:inline">
+                  Quãng xoay: {calculateCm360(selectedGame, testStage === 'high' ? psaState.highSens : psaState.lowSens, dpi).toFixed(1)} cm
+                </span>
               </div>
-              <FpsRange3D
-                game={selectedGame}
-                sensitivity={psaState.lowSens}
-                mode={drillMode}
-                difficulty={difficulty}
-                isZoomed={isZoomed}
-                onToggleZoom={() => setIsZoomed((z) => !z)}
-                durationSeconds={12}
-                crosshair={crosshair}
-                targetColor={targetColor}
-                isActive={true}
-                onComplete={handleCompleteLow}
-              />
-            </div>
-          )}
-
-          {/* Test Stage 2: High Sens */}
-          {testStage === 'high' && (
-            <div>
-              <div className="mb-2 text-xs font-mono text-slate-200 font-bold flex items-center gap-2">
-                <span className="w-2.5 h-2.5 rounded-full bg-volt-500 animate-pulse"></span>
-                Đang thử mức Cao: {psaState.highSens} • Quãng xoay: {calculateCm360(selectedGame, psaState.highSens, dpi).toFixed(1)} cm • Độ khó: {DIFFICULTY_CONFIGS[difficulty].name}
-              </div>
-              <FpsRange3D
-                game={selectedGame}
-                sensitivity={psaState.highSens}
-                mode={drillMode}
-                difficulty={difficulty}
-                isZoomed={isZoomed}
-                onToggleZoom={() => setIsZoomed((z) => !z)}
-                durationSeconds={12}
-                crosshair={crosshair}
-                targetColor={targetColor}
-                isActive={true}
-                onComplete={handleCompleteHigh}
-              />
-            </div>
-          )}
-
-          {/* Review & Choice Stage */}
-          {testStage === 'review' && tempLowResult && tempHighResult && (
-            <div className="steam-panel rounded-2xl p-6 shadow-hero-card">
-              <h3 className="text-xl font-bold text-white mb-1 flex items-center gap-2">
-                <Award className="w-5 h-5 text-volt-500" />
-                Kết Quả Vòng {psaState.currentRound}
-              </h3>
-              <p className="text-sm text-slate-200 mb-6">
-                Chọn mức cảm giác tay ổn định hơn để hệ thống tiếp tục thu hẹp phạm vi.
-              </p>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mb-6">
-                {/* Low Sens Card */}
-                <div className={`p-5 rounded-xl border relative transition-all ${
-                  tempLowResult.score >= tempHighResult.score
-                    ? 'bg-[#182329] border-volt-500 shadow-volt-glow'
-                    : 'bg-[#151924] steam-border opacity-85'
-                }`}>
-                  <div className="text-xs font-bold text-slate-300 uppercase mb-1">MỨC SENS THẤP</div>
-                  <div className="text-4xl font-extrabold font-mono text-white mb-4">
-                    {psaState.lowSens}
-                  </div>
-
-                  <div className="space-y-2.5 text-xs border-t border-[#2a3449] pt-3 text-slate-200 font-medium">
-                    <div className="flex justify-between">
-                      <span>Điểm kiểm soát:</span>
-                      <span className="font-bold text-volt-500 text-sm font-mono">{tempLowResult.score} / 100</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span>Độ chuẩn xác:</span>
-                      <span className="font-mono text-white font-bold">{tempLowResult.accuracy}%</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span>Độ mượt đường chuột:</span>
-                      <span className="font-mono text-white font-bold">{tempLowResult.smoothness}%</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span>Lệch quá mục tiêu:</span>
-                      <span className="text-rose-400 font-bold font-mono">{tempLowResult.overshootCount} lần</span>
-                    </div>
-                  </div>
-
-                  <button
-                    onClick={() => handleAdvanceRound('low')}
-                    className="w-full mt-5 py-3 bg-volt-500 hover:bg-volt-600 text-black font-extrabold rounded-lg transition-transform active:scale-95 flex items-center justify-center gap-2 text-xs uppercase tracking-wider"
-                  >
-                    Chọn mức {psaState.lowSens} <ArrowRight className="w-4 h-4" />
-                  </button>
-                </div>
-
-                {/* High Sens Card */}
-                <div className={`p-5 rounded-xl border relative transition-all ${
-                  tempHighResult.score > tempLowResult.score
-                    ? 'bg-[#182329] border-volt-500 shadow-volt-glow'
-                    : 'bg-[#151924] steam-border opacity-85'
-                }`}>
-                  <div className="text-xs font-bold text-slate-300 uppercase mb-1">MỨC SENS CAO</div>
-                  <div className="text-4xl font-extrabold font-mono text-white mb-4">
-                    {psaState.highSens}
-                  </div>
-
-                  <div className="space-y-2.5 text-xs border-t border-[#2a3449] pt-3 text-slate-200 font-medium">
-                    <div className="flex justify-between">
-                      <span>Điểm kiểm soát:</span>
-                      <span className="font-bold text-volt-500 text-sm font-mono">{tempHighResult.score} / 100</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span>Độ chuẩn xác:</span>
-                      <span className="font-mono text-white font-bold">{tempHighResult.accuracy}%</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span>Độ mượt đường chuột:</span>
-                      <span className="font-mono text-white font-bold">{tempHighResult.smoothness}%</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span>Lệch quá mục tiêu:</span>
-                      <span className="text-rose-400 font-bold font-mono">{tempHighResult.overshootCount} lần</span>
-                    </div>
-                  </div>
-
-                  <button
-                    onClick={() => handleAdvanceRound('high')}
-                    className="w-full mt-5 py-3 bg-volt-500 hover:bg-volt-600 text-black font-extrabold rounded-lg transition-transform active:scale-95 flex items-center justify-center gap-2 text-xs uppercase tracking-wider"
-                  >
-                    Chọn mức {psaState.highSens} <ArrowRight className="w-4 h-4" />
-                  </button>
-                </div>
+              <div className="text-slate-400 font-mono text-[11px] flex items-center gap-2">
+                <span>Góc: <strong className="text-volt-400">{drillAngle === '360' ? '360° Toàn Cảnh' : drillAngle === '180' ? '180° Bán Nguyệt' : '90° Trước Mặt'}</strong></span>
+                <span>•</span>
+                <span>Độ khó: <strong className="text-volt-400">{DIFFICULTY_CONFIGS[difficulty].name}</strong></span>
               </div>
             </div>
-          )}
+
+            <FpsRange3D
+              game={selectedGame}
+              sensitivity={testStage === 'high' ? psaState.highSens : psaState.lowSens}
+              mode={drillMode}
+              difficulty={difficulty}
+              angle={drillAngle}
+              isZoomed={isZoomed}
+              onToggleZoom={() => setIsZoomed((z) => !z)}
+              durationSeconds={12}
+              crosshair={crosshair}
+              targetColor={targetColor}
+              isActive={true}
+              stageTitle={
+                testStage === 'low'
+                  ? `Vòng ${psaState.currentRound}/5 (Lượt 1/2): Thử Sens Thấp ${psaState.lowSens}`
+                  : `Vòng ${psaState.currentRound}/5 (Lượt 2/2): Thử Sens Cao ${psaState.highSens}`
+              }
+              onComplete={testStage === 'low' ? handleCompleteLow : handleCompleteHigh}
+              customOverlay={
+                testStage === 'review' && tempLowResult && tempHighResult ? (
+                  <div className="max-w-2xl w-full bg-[#111520] steam-border rounded-2xl p-6 shadow-2xl animate-in fade-in zoom-in-95 duration-200">
+                    <div className="flex items-center justify-between border-b border-[#232938] pb-4 mb-5">
+                      <div>
+                        <h3 className="text-xl font-extrabold text-white flex items-center gap-2">
+                          <Award className="w-5 h-5 text-volt-500" />
+                          Kết Quả Vòng {psaState.currentRound} / 5
+                        </h3>
+                        <p className="text-xs text-slate-300 mt-1">
+                          Chọn mức Sens cho cảm giác cơ tay kiểm soát chắc chắn hơn để tiếp tục thu hẹp dải tìm kiếm.
+                        </p>
+                      </div>
+                      <span className="px-3 py-1 rounded-full bg-volt-500/15 text-volt-400 font-mono text-xs font-bold border border-volt-500/30">
+                        Vòng {psaState.currentRound} / 5
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+                      {/* Low Sens Card */}
+                      <div className={`p-4 rounded-xl border relative transition-all ${
+                        tempLowResult.score >= tempHighResult.score
+                          ? 'bg-[#182329] border-volt-500 shadow-volt-glow'
+                          : 'bg-[#151924] steam-border opacity-85'
+                      }`}>
+                        <div className="text-xs font-bold text-slate-300 uppercase mb-1">MỨC SENS THẤP</div>
+                        <div className="text-3xl font-extrabold font-mono text-white mb-3">
+                          {psaState.lowSens}
+                        </div>
+
+                        <div className="space-y-2 text-xs border-t border-[#2a3449] pt-2.5 text-slate-200 font-medium">
+                          <div className="flex justify-between">
+                            <span>Điểm kiểm soát:</span>
+                            <span className="font-bold text-volt-500 text-sm font-mono">{tempLowResult.score} / 100</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span>Độ chuẩn xác:</span>
+                            <span className="font-mono text-white font-bold">{tempLowResult.accuracy}%</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span>Độ mượt chuột:</span>
+                            <span className="font-mono text-white font-bold">{tempLowResult.smoothness}%</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span>Phản xạ trung bình:</span>
+                            <span className="font-mono text-white font-bold">{tempLowResult.avgReactionTimeMs}ms</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span>Lố tâm / Hụt tầm:</span>
+                            <span className="font-mono text-rose-400 font-bold">{tempLowResult.overshootCount} / {tempLowResult.undershootCount}</span>
+                          </div>
+                        </div>
+
+                        <button
+                          type="button"
+                          onClick={() => handleAdvanceRound('low')}
+                          className="w-full mt-4 py-2.5 bg-volt-500 hover:bg-volt-400 text-black font-extrabold rounded-lg text-xs uppercase tracking-wider transition-all shadow-volt-glow active:scale-95 cursor-pointer flex items-center justify-center gap-1.5"
+                        >
+                          Chọn mức {psaState.lowSens} <ArrowRight className="w-4 h-4" />
+                        </button>
+                      </div>
+
+                      {/* High Sens Card */}
+                      <div className={`p-4 rounded-xl border relative transition-all ${
+                        tempHighResult.score > tempLowResult.score
+                          ? 'bg-[#182329] border-volt-500 shadow-volt-glow'
+                          : 'bg-[#151924] steam-border opacity-85'
+                      }`}>
+                        <div className="text-xs font-bold text-slate-300 uppercase mb-1">MỨC SENS CAO</div>
+                        <div className="text-3xl font-extrabold font-mono text-white mb-3">
+                          {psaState.highSens}
+                        </div>
+
+                        <div className="space-y-2 text-xs border-t border-[#2a3449] pt-2.5 text-slate-200 font-medium">
+                          <div className="flex justify-between">
+                            <span>Điểm kiểm soát:</span>
+                            <span className="font-bold text-volt-500 text-sm font-mono">{tempHighResult.score} / 100</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span>Độ chuẩn xác:</span>
+                            <span className="font-mono text-white font-bold">{tempHighResult.accuracy}%</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span>Độ mượt chuột:</span>
+                            <span className="font-mono text-white font-bold">{tempHighResult.smoothness}%</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span>Phản xạ trung bình:</span>
+                            <span className="font-mono text-white font-bold">{tempHighResult.avgReactionTimeMs}ms</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span>Lố tâm / Hụt tầm:</span>
+                            <span className="font-mono text-rose-400 font-bold">{tempHighResult.overshootCount} / {tempHighResult.undershootCount}</span>
+                          </div>
+                        </div>
+
+                        <button
+                          type="button"
+                          onClick={() => handleAdvanceRound('high')}
+                          className="w-full mt-4 py-2.5 bg-volt-500 hover:bg-volt-400 text-black font-extrabold rounded-lg text-xs uppercase tracking-wider transition-all shadow-volt-glow active:scale-95 cursor-pointer flex items-center justify-center gap-1.5"
+                        >
+                          Chọn mức {psaState.highSens} <ArrowRight className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ) : undefined
+              }
+            />
+          </div>
         </div>
       )}
 
