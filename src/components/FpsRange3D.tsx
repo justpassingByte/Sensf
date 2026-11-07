@@ -1,11 +1,11 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import * as THREE from 'three';
-import { CrosshairConfig, DrillResult, SupportedGame, DrillMode, DrillDifficulty, DIFFICULTY_CONFIGS } from '../types';
+import { CrosshairConfig, DrillResult, SupportedGame, DrillMode, DrillDifficulty, DrillAngle, DIFFICULTY_CONFIGS } from '../types';
 import { GAME_CONFIGS } from '../lib/sensCalculator';
 import { sound } from '../lib/soundFx';
 import { MousePointer, Play, Maximize2, Minimize2, ZoomIn, ZoomOut, Crosshair, Shield } from 'lucide-react';
 
-export { type DrillMode, type DrillDifficulty, DIFFICULTY_CONFIGS };
+export { type DrillMode, type DrillDifficulty, type DrillAngle, DIFFICULTY_CONFIGS };
 
 interface Props {
   game: SupportedGame;
@@ -13,6 +13,7 @@ interface Props {
   fov?: number;
   mode: DrillMode;
   difficulty?: DrillDifficulty;
+  angle?: DrillAngle;
   isZoomed?: boolean;
   onToggleZoom?: () => void;
   durationSeconds?: number;
@@ -29,6 +30,7 @@ export const FpsRange3D: React.FC<Props> = ({
   fov = 103,
   mode,
   difficulty = 'medium',
+  angle = '90',
   isZoomed: externalZoom,
   onToggleZoom,
   durationSeconds = 15,
@@ -459,11 +461,29 @@ export const FpsRange3D: React.FC<Props> = ({
 
     const spawnFlickTarget = () => {
       if (!targetMeshRef.current) return;
-      const speedMult = DIFFICULTY_CONFIGS[difficulty].speedMultiplier;
-      const x = (Math.random() - 0.5) * (8.5 * Math.min(1.2, speedMult));
-      const y = 1.0 + Math.random() * 1.6;
-      const z = -6.5 - Math.random() * 3.5;
-      targetMeshRef.current.position.set(x, y, z);
+      const speedMult = DIFFICULTY_CONFIGS[difficulty]?.speedMultiplier || 1.0;
+      const y = 1.3 + Math.random() * 0.85;
+
+      if (angle === '360') {
+        // Full 360 degree combat simulation around player
+        const rad = (Math.random() * 2 - 1) * Math.PI;
+        const dist = 7.5 + Math.random() * 2.5;
+        const x = Math.sin(rad) * dist;
+        const z = -Math.cos(rad) * dist;
+        targetMeshRef.current.position.set(x, y, z);
+      } else if (angle === '180') {
+        // 180 degree semicircle (front + sides)
+        const rad = (Math.random() - 0.5) * Math.PI;
+        const dist = 7.5 + Math.random() * 2.5;
+        const x = Math.sin(rad) * dist;
+        const z = -Math.cos(rad) * dist;
+        targetMeshRef.current.position.set(x, y, z);
+      } else {
+        // 90 degree forward arc
+        const x = (Math.random() - 0.5) * (8.0 * Math.min(1.2, speedMult));
+        const z = -7.5 - Math.random() * 2.5;
+        targetMeshRef.current.position.set(x, y, z);
+      }
       targetSpawnTimeRef.current = performance.now();
     };
 
@@ -616,6 +636,48 @@ export const FpsRange3D: React.FC<Props> = ({
       ? Math.round(m.reactionTimes.reduce((a, b) => a + b, 0) / m.reactionTimes.length)
       : 280;
 
+    // Reaction Grade Classification
+    let reactionGrade = 'Khá Tốt';
+    let reactionGradeColor = '#ffea00';
+    if (avgReaction < 200) {
+      reactionGrade = 'Esports Pro';
+      reactionGradeColor = '#00e599';
+    } else if (avgReaction < 250) {
+      reactionGrade = 'Cực Nhanh';
+      reactionGradeColor = '#00e5ff';
+    } else if (avgReaction < 300) {
+      reactionGrade = 'Chuẩn Xác';
+      reactionGradeColor = '#ffea00';
+    } else {
+      reactionGrade = 'Cần Cải Thiện';
+      reactionGradeColor = '#ff7700';
+    }
+
+    // Weighted Score Formula (Aim Lab / Kovaak's style)
+    const diffMultipliers: Record<DrillDifficulty, number> = {
+      easy: 0.8,
+      medium: 1.0,
+      hard: 1.35,
+      pro: 1.75
+    };
+    const angleMultipliers: Record<DrillAngle, number> = {
+      '90': 1.0,
+      '180': 1.25,
+      '360': 1.6
+    };
+
+    const diffMult = diffMultipliers[difficulty] || 1.0;
+    const angleMult = angleMultipliers[angle] || 1.0;
+    const speedBonus = Math.max(0.6, 1.0 + (350 - avgReaction) / 250);
+    const accFactor = Math.max(0.2, accuracy / 100);
+
+    let calculatedScore = 0;
+    if (mode === 'flicking') {
+      calculatedScore = Math.round(m.hits * 120 * accFactor * speedBonus * diffMult * angleMult);
+    } else {
+      calculatedScore = Math.round(accuracy * 15 * diffMult * angleMult * (smoothness / 100));
+    }
+
     const result: DrillResult = {
       accuracy,
       targetsHit: m.hits,
@@ -624,13 +686,15 @@ export const FpsRange3D: React.FC<Props> = ({
       avgReactionTimeMs: avgReaction,
       overshootCount: m.overshoots,
       undershootCount: Math.round(m.undershoots),
-      score: 0
+      score: calculatedScore,
+      reactionGrade,
+      reactionGradeColor
     };
 
     if (onComplete) {
       onComplete(result);
     }
-  }, [mode, onComplete]);
+  }, [mode, difficulty, angle, onComplete]);
 
   // Countdown Timer
   useEffect(() => {
@@ -745,6 +809,10 @@ export const FpsRange3D: React.FC<Props> = ({
           <span className="w-1 h-1 rounded-full bg-slate-500"></span>
           <span className="px-2 py-0.5 rounded bg-volt-500/20 text-volt-400 font-mono font-extrabold text-[11px] uppercase tracking-wider">
             {DIFFICULTY_CONFIGS[difficulty]?.name || 'Vừa'}
+          </span>
+          <span className="w-1 h-1 rounded-full bg-slate-500"></span>
+          <span className="px-2 py-0.5 rounded bg-cyan-500/20 text-cyan-400 font-mono font-extrabold text-[11px] uppercase tracking-wider">
+            {angle === '360' ? '360°' : angle === '180' ? '180°' : '90°'}
           </span>
         </div>
 

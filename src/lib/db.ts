@@ -1,4 +1,4 @@
-import { SupportedGame, MouseProfile, CrosshairConfig } from '../types';
+import { SupportedGame, MouseProfile, CrosshairConfig, DrillHistoryItem } from '../types';
 import { calculateCm360 } from './sensCalculator';
 
 const STORAGE_KEY_ACTIVE_STATE = 'sensfinder_active_state_v2';
@@ -6,6 +6,7 @@ const STORAGE_KEY_GAME_SENS_MAP = 'sensfinder_game_sens_map_v2';
 const STORAGE_KEY_PROFILES = 'sensfinder_profiles_v2';
 const STORAGE_KEY_CROSSHAIR = 'sensfinder_crosshair_v2';
 const STORAGE_KEY_TARGET_COLOR = 'sensfinder_target_color_v2';
+const STORAGE_KEY_DRILL_HISTORY = 'sensfinder_drill_history_v2';
 
 export interface ActiveState {
   game: SupportedGame;
@@ -173,6 +174,45 @@ export class SensDatabase {
   static saveTargetColor(hex: string) {
     try {
       localStorage.setItem(STORAGE_KEY_TARGET_COLOR, hex);
+    } catch {}
+  }
+
+  // Drill Performance History & High Score
+  static getDrillHistory(): DrillHistoryItem[] {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY_DRILL_HISTORY);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed)) return parsed;
+      }
+    } catch {}
+    return [];
+  }
+
+  static saveDrillResult(item: DrillHistoryItem): DrillHistoryItem[] {
+    try {
+      const history = this.getDrillHistory();
+      const next = [item, ...history].slice(0, 50); // Keep latest 50 runs
+      localStorage.setItem(STORAGE_KEY_DRILL_HISTORY, JSON.stringify(next));
+      return next;
+    } catch (e) {
+      console.error('Failed to save drill result:', e);
+      return [];
+    }
+  }
+
+  static getHighScore(mode?: string, difficulty?: string): number {
+    const history = this.getDrillHistory();
+    let filtered = history;
+    if (mode) filtered = filtered.filter((h) => h.mode === mode);
+    if (difficulty) filtered = filtered.filter((h) => h.difficulty === difficulty);
+    if (filtered.length === 0) return 0;
+    return Math.max(...filtered.map((h) => h.score || 0));
+  }
+
+  static clearDrillHistory() {
+    try {
+      localStorage.removeItem(STORAGE_KEY_DRILL_HISTORY);
     } catch {}
   }
 }

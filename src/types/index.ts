@@ -49,6 +49,8 @@ export interface CrosshairConfig {
   outline: boolean;
 }
 
+export type DrillAngle = '90' | '180' | '360';
+
 export interface DrillResult {
   accuracy: number;        // 0 - 100%
   targetsHit: number;
@@ -58,6 +60,27 @@ export interface DrillResult {
   overshootCount: number;
   undershootCount: number;
   score: number;
+  reactionGrade?: string;
+  reactionGradeColor?: string;
+}
+
+export interface DrillHistoryItem {
+  id: string;
+  timestamp: number;
+  date: string;
+  game: SupportedGame;
+  sens: number;
+  dpi: number;
+  mode: DrillMode;
+  difficulty: DrillDifficulty;
+  angle: DrillAngle;
+  score: number;
+  targetsHit: number;
+  totalShots: number;
+  accuracy: number;
+  avgReactionTimeMs: number;
+  smoothness: number;
+  reactionGrade: string;
 }
 
 export interface PsaRoundData {
