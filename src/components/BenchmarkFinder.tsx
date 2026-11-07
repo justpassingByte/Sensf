@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
 import confetti from 'canvas-confetti';
-import { BenchmarkPoint, CrosshairConfig, DrillResult, SupportedGame } from '../types';
+import { BenchmarkPoint, CrosshairConfig, DrillResult, SupportedGame, DrillDifficulty, DrillMode, DIFFICULTY_CONFIGS } from '../types';
 import { GAME_CONFIGS, calculateCm360 } from '../lib/sensCalculator';
 import { FpsRange3D } from './FpsRange3D';
 import { calculateDrillScore } from '../lib/psaAlgorithm';
-import { BarChart3, Play } from 'lucide-react';
+import { BarChart3, Play, ZoomIn, ZoomOut } from 'lucide-react';
 
 interface Props {
   selectedGame: SupportedGame;
@@ -27,6 +27,9 @@ export const BenchmarkFinder: React.FC<Props> = ({
 }) => {
   const [minSens, setMinSens] = useState<number>(() => Math.max(0.05, Number((currentSens * 0.6).toFixed(2))));
   const [maxSens, setMaxSens] = useState<number>(() => Number((currentSens * 1.5).toFixed(2)));
+  const [drillMode, setDrillMode] = useState<DrillMode>('flicking');
+  const [difficulty, setDifficulty] = useState<DrillDifficulty>('medium');
+  const [isZoomed, setIsZoomed] = useState(false);
   const [numSteps] = useState<number>(5);
 
   const [isRunning, setIsRunning] = useState(false);
@@ -102,11 +105,11 @@ export const BenchmarkFinder: React.FC<Props> = ({
             Hệ thống đưa bạn qua 5 mốc độ nhạy từ thấp đến cao để đo tốc độ di chuột, độ giật cơ tay và phản xạ vi chỉnh. Biểu đồ đường cong phân phối điểm sẽ làm nổi bật mốc độ nhạy giúp bạn đạt phong độ cao nhất.
           </p>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6 max-w-2xl">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4 max-w-3xl">
             <div className="bg-[#181d2a] p-4 rounded-xl steam-border">
               <div className="flex justify-between items-center mb-2">
                 <label className="text-xs font-semibold text-slate-200">
-                  Cận Dưới
+                  Cận Dưới (Sens Thấp)
                 </label>
                 <span className="text-xs font-bold text-volt-500">{gameConfig.name}</span>
               </div>
@@ -122,7 +125,7 @@ export const BenchmarkFinder: React.FC<Props> = ({
             <div className="bg-[#181d2a] p-4 rounded-xl steam-border">
               <div className="flex justify-between items-center mb-2">
                 <label className="text-xs font-semibold text-slate-200">
-                  Cận Trên
+                  Cận Trên (Sens Cao)
                 </label>
                 <span className="text-xs font-bold text-volt-500">{gameConfig.name}</span>
               </div>
@@ -135,22 +138,88 @@ export const BenchmarkFinder: React.FC<Props> = ({
               />
             </div>
 
-            <div className="bg-[#181d2a] p-4 rounded-xl steam-border flex flex-col justify-between">
-              <label className="text-xs font-semibold text-slate-200 block mb-1">
-                Số Lượng Mốc Thử
+            <div className="bg-[#181d2a] p-4 rounded-xl steam-border">
+              <label className="text-xs font-semibold text-slate-200 block mb-2">
+                Bài Tập Quét Sens
               </label>
-              <div className="text-volt-500 font-mono font-extrabold text-lg">
-                {numSteps} Mốc
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => setDrillMode('flicking')}
+                  className={`px-3 py-1.5 text-xs font-bold rounded-lg border transition-all cursor-pointer ${
+                    drillMode === 'flicking'
+                      ? 'bg-volt-500 text-black border-volt-500 shadow-volt-glow font-extrabold'
+                      : 'bg-[#0e121a] border-[#2a3449] text-slate-200 hover:text-white'
+                  }`}
+                >
+                  Flick
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setDrillMode('tracking')}
+                  className={`px-3 py-1.5 text-xs font-bold rounded-lg border transition-all cursor-pointer ${
+                    drillMode === 'tracking'
+                      ? 'bg-volt-500 text-black border-volt-500 shadow-volt-glow font-extrabold'
+                      : 'bg-[#0e121a] border-[#2a3449] text-slate-200 hover:text-white'
+                  }`}
+                >
+                  Tracking
+                </button>
               </div>
-              <div className="text-xs text-slate-300 font-medium">
-                12 giây mỗi mốc
-              </div>
+            </div>
+          </div>
+
+          {/* Difficulty Selector */}
+          <div className="bg-[#181d2a] p-4 rounded-xl steam-border mb-6 max-w-3xl">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-3">
+              <label className="text-xs font-bold text-slate-200 flex items-center gap-2">
+                <span>Độ Khó Mục Tiêu Aim Lab</span>
+                <span className="text-[11px] font-normal text-slate-400">
+                  (Kích thước mục tiêu quét benchmark)
+                </span>
+              </label>
+              <span className="text-xs text-volt-400 font-medium">
+                {DIFFICULTY_CONFIGS[difficulty].description}
+              </span>
+            </div>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+              {(['easy', 'medium', 'hard', 'pro'] as DrillDifficulty[]).map((diffKey) => {
+                const conf = DIFFICULTY_CONFIGS[diffKey];
+                const isSelected = difficulty === diffKey;
+                return (
+                  <button
+                    key={diffKey}
+                    type="button"
+                    onClick={() => setDifficulty(diffKey)}
+                    className={`p-3 rounded-xl border text-left transition-all cursor-pointer ${
+                      isSelected
+                        ? 'bg-[#222a3d] border-volt-500 shadow-volt-glow'
+                        : 'bg-[#0e121a] border-[#2a3449] hover:border-slate-600'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between mb-1">
+                      <span className={`text-xs font-extrabold ${isSelected ? 'text-volt-500' : 'text-white'}`}>
+                        {conf.name}
+                      </span>
+                      <span className="text-[11px] font-mono text-slate-400">
+                        r={conf.targetRadius}m
+                      </span>
+                    </div>
+                    <div className="text-[11px] text-slate-300 leading-tight">
+                      {diffKey === 'easy' && 'Mục tiêu to, dễ vẩy'}
+                      {diffKey === 'medium' && 'Chuẩn thi đấu FPS'}
+                      {diffKey === 'hard' && 'Vi chỉnh flick nhỏ'}
+                      {diffKey === 'pro' && 'Headshot điểm ảnh'}
+                    </div>
+                  </button>
+                );
+              })}
             </div>
           </div>
 
           <button
             onClick={handleStart}
-            className="px-8 py-3 bg-volt-500 hover:bg-volt-600 text-black font-extrabold rounded-xl shadow-volt-glow transition-all flex items-center gap-2 text-xs uppercase tracking-wider active:scale-95"
+            className="px-8 py-3 bg-volt-500 hover:bg-volt-600 text-black font-extrabold rounded-xl shadow-volt-glow transition-all flex items-center gap-2 text-xs uppercase tracking-wider active:scale-95 cursor-pointer"
           >
             <Play className="w-4 h-4 fill-black" /> Bắt đầu quét hiệu năng
           </button>
@@ -160,31 +229,82 @@ export const BenchmarkFinder: React.FC<Props> = ({
       {/* Running View */}
       {isRunning && testPoints.length > 0 && (
         <div className="space-y-4">
-          <div className="steam-panel rounded-xl p-4 flex items-center justify-between">
+          <div className="steam-panel rounded-xl p-4 flex flex-col md:flex-row md:items-center justify-between gap-3">
             <div className="flex items-center gap-3.5">
               <div className="w-10 h-10 rounded-xl bg-volt-500/20 border border-volt-500 flex items-center justify-center font-mono font-extrabold text-volt-500 text-base">
                 {currentStepIndex + 1}/{testPoints.length}
               </div>
               <div>
-                <div className="text-xs font-medium text-slate-300">ĐANG KIỂM TRA MỐC {currentStepIndex + 1}</div>
+                <div className="text-xs font-medium text-slate-300 flex items-center gap-2">
+                  <span>MỐC {currentStepIndex + 1} TRÊN {testPoints.length}</span>
+                  <span className="text-slate-600">•</span>
+                  <span className="text-volt-400 font-mono uppercase font-bold">{drillMode === 'flicking' ? 'Flick Bắn Lướt' : 'Tracking Bám Tâm'}</span>
+                </div>
                 <div className="text-sm font-bold text-white font-mono mt-0.5">
                   Độ nhạy: <span className="text-volt-500 font-extrabold">{testPoints[currentStepIndex]}</span> • Quãng xoay: {calculateCm360(selectedGame, testPoints[currentStepIndex], dpi).toFixed(1)} cm
                 </div>
               </div>
             </div>
 
-            <button
-              onClick={handleReset}
-              className="text-xs text-slate-300 hover:text-rose-400 px-3 py-1.5 rounded-lg hover:bg-[#1a2030] transition-colors font-medium steam-border"
-            >
-              Hủy bỏ
-            </button>
+            <div className="flex flex-wrap items-center gap-2">
+              <div className="flex items-center gap-1 bg-[#131722] p-1 rounded-xl steam-border text-xs">
+                <span className="text-slate-400 text-xs px-2 font-medium">Độ khó:</span>
+                {(['easy', 'medium', 'hard', 'pro'] as DrillDifficulty[]).map((d) => (
+                  <button
+                    key={d}
+                    type="button"
+                    onClick={() => setDifficulty(d)}
+                    className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                      difficulty === d
+                        ? 'bg-volt-500 text-black shadow-volt-glow font-extrabold'
+                        : 'text-slate-400 hover:text-white'
+                    }`}
+                    title={DIFFICULTY_CONFIGS[d].description}
+                  >
+                    {DIFFICULTY_CONFIGS[d].name}
+                  </button>
+                ))}
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setIsZoomed((z) => !z)}
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer steam-border ${
+                  isZoomed
+                    ? 'bg-volt-500 text-black shadow-volt-glow font-black'
+                    : 'bg-[#131722] text-slate-200 hover:text-white'
+                }`}
+                title="Chuột phải hoặc bấm để phóng to ngắm (ADS)"
+              >
+                {isZoomed ? (
+                  <>
+                    <ZoomOut className="w-3.5 h-3.5" />
+                    <span>Thu Nhỏ (74°)</span>
+                  </>
+                ) : (
+                  <>
+                    <ZoomIn className="w-3.5 h-3.5 text-volt-500" />
+                    <span>Ngắm ADS</span>
+                  </>
+                )}
+              </button>
+
+              <button
+                onClick={handleReset}
+                className="text-xs text-slate-300 hover:text-rose-400 px-3 py-1.5 rounded-lg hover:bg-[#1a2030] transition-colors font-medium steam-border cursor-pointer"
+              >
+                Hủy bỏ
+              </button>
+            </div>
           </div>
 
           <FpsRange3D
             game={selectedGame}
             sensitivity={testPoints[currentStepIndex]}
-            mode="tracking"
+            mode={drillMode}
+            difficulty={difficulty}
+            isZoomed={isZoomed}
+            onToggleZoom={() => setIsZoomed((z) => !z)}
             durationSeconds={12}
             crosshair={crosshair}
             targetColor={targetColor}
